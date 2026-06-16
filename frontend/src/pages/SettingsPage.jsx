@@ -24,6 +24,9 @@ export default function SettingsPage() {
                 // keep localStorage in sync for the header avatar
                 localStorage.setItem("familyName", res.data.familyName);
                 localStorage.setItem("familyEmail", res.data.email);
+                if (res.data.profilePic) {
+                    localStorage.setItem("profilePhoto", res.data.profilePic);
+                }
             } catch (err) {
                 console.error("Failed to load profile", err);
             } finally {
@@ -61,6 +64,10 @@ export default function SettingsPage() {
                         <ProfileTab
                             family={family}
                             onLogout={handleLogout}
+                            onProfilePhotoUpdate={(newUrl) => {
+                                setFamily((prev) => ({ ...prev, profilePic: newUrl }));
+                                localStorage.setItem("profilePhoto", newUrl);
+                            }}
                         />
                     </div>
                 )}

@@ -39,10 +39,21 @@ export default function ProfilePage() {
   const navigate = useNavigate();
   const [familyName, setFamilyName] = useState("");
   const [familyEmail, setFamilyEmail] = useState("");
+  const [profilePic, setProfilePic] = useState(localStorage.getItem("profilePhoto") || "/profile.png");
   const [members, setMembers] = useState([]);
   const [alerts, setAlerts] = useState([]);
   const [date, setDate] = useState(new Date());
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const updatePhoto = (event) => {
+      const newPhoto = event?.detail?.profilePhoto || localStorage.getItem("profilePhoto") || "/profile.png";
+      setProfilePic(newPhoto);
+    };
+
+    window.addEventListener("profilePhotoUpdated", updatePhoto);
+    return () => window.removeEventListener("profilePhotoUpdated", updatePhoto);
+  }, []);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -55,6 +66,9 @@ export default function ProfilePage() {
         setFamilyName(famRes.data.familyName);
         setFamilyEmail(famRes.data.email);
         setMembers(famRes.data.members || []);
+        const pic = famRes.data.profilePic || localStorage.getItem("profilePhoto") || "/profile.png";
+        setProfilePic(pic);
+        localStorage.setItem("profilePhoto", pic);
 
         const reminderPromises = (famRes.data.members || []).map(async (member) => {
           const res = await API.get(`/reminders/${member._id}`, config);
@@ -169,7 +183,7 @@ export default function ProfilePage() {
               aria-label="Open settings"
             >
               <img
-                src={localStorage.getItem("profilePhoto") || "/profile.png"}
+                src={profilePic || localStorage.getItem("profilePhoto") || "/profile.png"}
                 alt="Profile"
                 className="w-10 h-10 rounded-full object-cover ring-1 ring-gray-200 hover:ring-blue-400 transition"
               />

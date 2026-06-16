@@ -1,17 +1,21 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { LogOut, Edit2, Trash2, Lock, Upload, Check, X, Camera } from "lucide-react";
 import API from "../api";
 
-const ProfileTab = ({ family, onLogout }) => {
+const ProfileTab = ({ family, onLogout, onProfilePhotoUpdate }) => {
   const [editing, setEditing] = useState(false);
   const [newName, setNewName] = useState(family.familyName);
   const [newEmail, setNewEmail] = useState(family.email);
   const [oldPassword, setOldPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [photo, setPhoto] = useState(null);
-  const [photoPreview, setPhotoPreview] = useState(family.profilePic);
+  const [photoPreview, setPhotoPreview] = useState(family.profilePic || localStorage.getItem("profilePhoto") || "/profile.png");
   const [loading, setLoading] = useState(false);
   const [section, setSection] = useState(null); // "password" | "danger" | null
+
+  useEffect(() => {
+    setPhotoPreview(family.profilePic || localStorage.getItem("profilePhoto") || "/profile.png");
+  }, [family.profilePic]);
 
   const getInitials = (name = "") =>
     name.split(" ").slice(0, 2).map((w) => w[0]?.toUpperCase()).join("");
@@ -29,6 +33,8 @@ const ProfileTab = ({ family, onLogout }) => {
       const newUrl = res.data.photoUrl;
       setPhotoPreview(newUrl);
       localStorage.setItem("profilePhoto", newUrl);
+      window.dispatchEvent(new CustomEvent("profilePhotoUpdated", { detail: { profilePhoto: newUrl } }));
+      if (onProfilePhotoUpdate) onProfilePhotoUpdate(newUrl);
       setPhoto(null);
       alert("Profile picture updated.");
     } catch (err) {
