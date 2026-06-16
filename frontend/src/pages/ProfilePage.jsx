@@ -4,19 +4,44 @@ import Calendar from "react-calendar";
 import "react-calendar/dist/Calendar.css";
 import API from "../api";
 import AivanaChat from "../components/AivanaChat";
-import ProfileTab from "../components/ProfileTab";
 import { toast } from "react-hot-toast";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import Spinner from "../components/Spinner";
 
+// SVG icon helpers — no emojis
+const IconPlus = () => (
+  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+  </svg>
+);
+const IconClock = () => (
+  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+  </svg>
+);
+const IconChart = () => (
+  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+  </svg>
+);
+const IconBell = () => (
+  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+  </svg>
+);
+const IconAlert = () => (
+  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+  </svg>
+);
 
 export default function ProfilePage() {
+  const navigate = useNavigate();
   const [familyName, setFamilyName] = useState("");
   const [familyEmail, setFamilyEmail] = useState("");
   const [members, setMembers] = useState([]);
   const [alerts, setAlerts] = useState([]);
   const [date, setDate] = useState(new Date());
-  const [showProfileTab, setShowProfileTab] = useState(false);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -33,18 +58,15 @@ export default function ProfilePage() {
 
         const reminderPromises = (famRes.data.members || []).map(async (member) => {
           const res = await API.get(`/reminders/${member._id}`, config);
-          return res.data.map((r) => ({
-            ...r,
-            memberName: member.name,
-          }));
+          return res.data.map((r) => ({ ...r, memberName: member.name }));
         });
 
         const remindersArrays = await Promise.all(reminderPromises);
         setAlerts(remindersArrays.flat());
       } catch (error) {
         console.error("Error fetching data:", error);
-      }finally {
-      setLoading(false);
+      } finally {
+        setLoading(false);
       }
     };
     fetchData();
@@ -68,7 +90,6 @@ export default function ProfilePage() {
 
   const handleAddDrugAlert = async () => {
     if (members.length === 0) return alert("No members available");
-
     const memberOptions = members.map((m, i) => `${i + 1}. ${m.name}`).join("\n");
     const selected = prompt(`Select member by number:\n${memberOptions}`);
     const memberIndex = parseInt(selected) - 1;
@@ -83,11 +104,8 @@ export default function ProfilePage() {
     const [hours, minutes] = timeInput.split(":");
     const now = new Date();
     const localTime = new Date(
-      now.getFullYear(),
-      now.getMonth(),
-      now.getDate(),
-      parseInt(hours),
-      parseInt(minutes)
+      now.getFullYear(), now.getMonth(), now.getDate(),
+      parseInt(hours), parseInt(minutes)
     );
     const note = prompt("Add note (optional):");
 
@@ -96,16 +114,9 @@ export default function ProfilePage() {
       const config = { headers: { Authorization: `Bearer ${token}` } };
       const res = await API.post(
         "/reminders/add",
-        {
-          memberId: member._id,
-          medicine,
-          dosage,
-          time: localTime.toISOString(),
-          note,
-        },
+        { memberId: member._id, medicine, dosage, time: localTime.toISOString(), note },
         config
       );
-
       toast.success("Drug reminder added successfully!");
       setAlerts([...alerts, { ...res.data.reminder, memberName: member.name }]);
     } catch (error) {
@@ -114,265 +125,269 @@ export default function ProfilePage() {
     }
   };
 
-  // ProfileTab handlers
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    window.location.href = "/";
-  };
-  const handleUpdate = async (updatedData) => {
-  try {
-    const res = await API.put("/family/update", updatedData);
-    setFamilyName(res.data.familyName);
-    setFamilyEmail(res.data.email);
-    toast.success("Profile updated successfully!");
-  } catch (error) {
-    console.error("Error updating profile:", error);
-    toast.error("Failed to update profile");
-  }
-  };
-
-  const handlePasswordChange = async (newPassword) => {
-    try {
-      await API.put("/family/change-password", { password: newPassword });
-      toast.success("Password changed successfully!");
-    } catch (error) {
-      console.error("Error changing password:", error);
-      toast.error("Could not change password");
-    }
-  };
-
-  const handleDelete = async () => {
-    if (!window.confirm("Are you sure you want to delete your account permanently?")) return;
-    try {
-      await API.delete("/family/delete-account");
-      toast.success("Account deleted successfully");
-      localStorage.removeItem("token");
-      window.location.href = "/";
-    } catch (error) {
-      console.error("Error deleting account:", error);
-      toast.error("Failed to delete account");
-    }
-  };
-
-
-  const family = {
-    name: familyName || "Loading...",
-    email: familyEmail || "No email available",
-  };
-
   const handleDeleteMember = async (memberId) => {
-  if (window.confirm("Are you sure you want to remove this member?")) {
-    try {
-      const token = localStorage.getItem("token");
-      const config = { headers: { Authorization: `Bearer ${token}` } };
-      await API.delete(`/members/${memberId}`, config);
-      toast.success("Member deleted successfully");
-      setMembers(members.filter((m) => m._id !== memberId));
-    } catch (err) {
-      toast.error(err.response?.data?.message || "Error deleting member");
+    if (window.confirm("Are you sure you want to remove this member?")) {
+      try {
+        const token = localStorage.getItem("token");
+        const config = { headers: { Authorization: `Bearer ${token}` } };
+        await API.delete(`/members/${memberId}`, config);
+        toast.success("Member deleted successfully");
+        setMembers(members.filter((m) => m._id !== memberId));
+      } catch (err) {
+        toast.error(err.response?.data?.message || "Error deleting member");
+      }
     }
-  }
-};
+  };
 
+  const getInitials = (name = "") =>
+    name.split(" ").slice(0, 2).map((w) => w[0]?.toUpperCase()).join("");
 
+  const avatarColors = [
+    "bg-blue-100 text-blue-700",
+    "bg-emerald-100 text-emerald-700",
+    "bg-amber-100 text-amber-700",
+    "bg-rose-100 text-rose-700",
+    "bg-purple-100 text-purple-700",
+  ];
+
+  const overdueCount = alerts.filter((a) => new Date(a.time) < Date.now()).length;
+  const upcomingCount = alerts.filter((a) => new Date(a.time) >= Date.now()).length;
 
   return (
     <>
-    {loading && <Spinner show={loading}/>}
-    <div className="min-h-screen flex flex-col bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50">
-      
-      {/* Animated Background Elements */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute top-0 left-0 w-96 h-96 bg-blue-300 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-pulse"></div>
-        <div className="absolute -bottom-32 right-0 w-96 h-96 bg-purple-300 rounded-full mix-blend-multiply filter blur-3xl opacity-10 animate-pulse"></div>
-      </div>
+      {loading && <Spinner show={loading} />}
 
-      {/* Header */}
-      <header className="relative z-20 flex justify-between items-center bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 text-white py-5 px-6 shadow-xl backdrop-blur-sm bg-opacity-95">
-        <h1 className="text-2xl md:text-3xl font-bold truncate drop-shadow-lg">
-           Welcome, {familyName || "Family"}!
-        </h1>
+      <div className="min-h-screen flex flex-col bg-gray-50">
 
-        <div className="relative">
-          <button
-            onClick={() => setShowProfileTab(!showProfileTab)}
-            className="transform hover:scale-110 transition duration-300"
-          >
-            <img
-              src={
-                family.profilePic ||
-                localStorage.getItem("profilePhoto") ||
-                "/profile.png"
-              }
-              alt="Profile"
-              className="w-12 h-12 rounded-full border-3 border-white shadow-lg hover:shadow-xl cursor-pointer"
-            />
-          </button>
-          {showProfileTab && (
-            <div className="absolute right-0 mt-3 bg-white rounded-2xl shadow-2xl p-6 w-80 z-50 backdrop-blur-lg border border-white/30">
-              <ProfileTab
-                family={family}
-                onLogout={handleLogout}
-                onUpdate={handleUpdate}
-                onPasswordChange={handlePasswordChange}
-                onDelete={handleDelete}
-              />
-            </div>
-          )}
-        </div>
-      </header>
-
-      {/* Main */}
-      <main className="relative z-10 flex-grow max-w-7xl mx-auto w-full p-4 md:p-6 grid grid-cols-1 md:grid-cols-3 gap-6 overflow-hidden">
-        
-        {/* Family Members Section */}
-        <section className="col-span-2 bg-white/80 backdrop-blur-xl rounded-3xl shadow-xl p-6 md:p-8 flex flex-col border border-white/30">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
-              👨‍👩‍👧‍👦 Family Members
-            </h2>
+        {/* ── Header ── */}
+        <header className="sticky top-0 z-20 bg-white border-b border-gray-100 px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-3 min-w-0">
+            {/* Profile pic → navigates to /settings */}
             <button
-              onClick={handleAddMember}
-              className="bg-gradient-to-r from-green-400 to-green-600 text-white font-semibold px-4 py-2 rounded-full hover:shadow-lg transform hover:scale-105 transition duration-300 flex items-center gap-2"
+              onClick={() => navigate("/settings")}
+              className="flex-shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded-full"
+              aria-label="Open settings"
             >
-              ➕ Add Member
+              <img
+                src={localStorage.getItem("profilePhoto") || "/profile.png"}
+                alt="Profile"
+                className="w-10 h-10 rounded-full object-cover ring-1 ring-gray-200 hover:ring-blue-400 transition"
+              />
             </button>
+
+            <div className="min-w-0">
+              <h1 className="text-base font-semibold text-gray-900 truncate leading-tight">
+                {familyName ? `${familyName} Family` : "My Family"}
+              </h1>
+              <p className="text-xs text-gray-400 hidden sm:block">
+                {new Date().toLocaleDateString("en-GB", {
+                  weekday: "long", day: "numeric", month: "long", year: "numeric",
+                })}
+              </p>
+            </div>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-            {members.length === 0 ? (
-              <p className="text-gray-500 col-span-full text-center py-8">No members yet. Add one to get started!</p>
-            ) : (
-              members.map((member) => (
-                <div
-                  key={member._id}
-                  className="group p-5 bg-gradient-to-br from-blue-100 to-purple-100 rounded-2xl shadow-md hover:shadow-xl transform hover:scale-105 transition duration-300 text-center border border-blue-200/50"
+          <div className="flex items-center gap-2">
+            <button
+              className="w-9 h-9 rounded-xl border border-gray-100 bg-white flex items-center justify-center text-gray-500 hover:bg-gray-50 transition relative"
+              aria-label="Notifications"
+            >
+              <IconBell />
+              {overdueCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-rose-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                  {overdueCount}
+                </span>
+              )}
+            </button>
+
+            <button
+              onClick={() => navigate("/analytics")}
+              className="hidden sm:flex items-center gap-1.5 text-xs font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 px-3 py-2 rounded-xl transition"
+            >
+              <IconChart /> Analytics
+            </button>
+          </div>
+        </header>
+
+        {/* ── Main grid ── */}
+        <main className="flex-grow w-full max-w-6xl mx-auto px-4 py-5 grid grid-cols-1 lg:grid-cols-3 gap-5">
+
+          {/* ── Left column ── */}
+          <div className="lg:col-span-2 flex flex-col gap-5">
+
+            {/* Stat row */}
+            <div className="grid grid-cols-3 gap-3">
+              {[
+                { label: "Members", value: members.length, color: "text-blue-600 bg-blue-50" },
+                { label: "Upcoming", value: upcomingCount, color: "text-emerald-600 bg-emerald-50" },
+                { label: "Overdue", value: overdueCount, color: "text-rose-600 bg-rose-50" },
+              ].map(({ label, value, color }) => (
+                <div key={label} className="bg-white rounded-2xl border border-gray-100 p-4 flex flex-col gap-1">
+                  <span className={`text-[11px] font-semibold uppercase tracking-wide ${color.split(" ")[0]}`}>{label}</span>
+                  <span className="text-3xl font-semibold text-gray-900">{value}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Family Members */}
+            <div className="bg-white rounded-2xl border border-gray-100 p-5">
+              <div className="flex items-center justify-between mb-5">
+                <h2 className="text-sm font-semibold text-gray-900 uppercase tracking-wide">Family Members</h2>
+                <button
+                  onClick={handleAddMember}
+                  className="flex items-center gap-1.5 text-xs font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition"
                 >
-                  <div className="text-4xl mb-2 group-hover:animate-bounce">👤</div>
-                  <h3 className="text-lg font-bold text-gray-800">{member.name}</h3>
-                  <p className="text-sm text-gray-600 mb-3">{member.role}</p>
+                  <IconPlus /> Add member
+                </button>
+              </div>
+
+              {members.length === 0 ? (
+                <div className="text-center py-12 text-gray-400">
+                  <p className="text-sm">No members yet. Add one to get started.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                  {members.map((member, idx) => (
+                    <div
+                      key={member._id}
+                      className="flex flex-col items-center text-center gap-2 bg-gray-50 hover:bg-gray-100 border border-gray-100 rounded-2xl p-4 transition group"
+                    >
+                      <div className={`w-11 h-11 rounded-full flex items-center justify-center text-sm font-semibold ${avatarColors[idx % avatarColors.length]}`}>
+                        {getInitials(member.name)}
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-gray-900 leading-tight">{member.name}</p>
+                        <p className="text-xs text-gray-400">{member.role}</p>
+                      </div>
+                      <button
+                        onClick={() => handleDeleteMember(member._id)}
+                        className="mt-1 w-full text-xs text-rose-500 bg-rose-50 hover:bg-rose-100 border border-rose-100 py-1.5 rounded-lg font-medium transition opacity-0 group-hover:opacity-100"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+
+                  {/* Ghost add card */}
                   <button
-                    onClick={() => handleDeleteMember(member._id)}
-                    className="w-full bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-lg font-semibold transition transform hover:scale-105"
+                    onClick={handleAddMember}
+                    className="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-gray-200 rounded-2xl p-4 text-gray-400 hover:border-blue-300 hover:text-blue-400 hover:bg-blue-50/40 transition min-h-[120px]"
                   >
-                    🗑️ Delete
+                    <IconPlus />
+                    <span className="text-xs font-medium">Add member</span>
                   </button>
                 </div>
-              ))
-            )}
-          </div>
-        </section>
-
-        {/* Right Widgets */}
-        <aside className="flex flex-col gap-6">
-          
-          {/* Drug Alerts */}
-          <div className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-xl p-6 flex-1 flex flex-col border border-white/30">
-            <h2 className="text-2xl font-bold mb-4 text-gray-800">💊 Drug Alerts</h2>
-            <div className="flex-1 overflow-y-auto max-h-48 pr-3 scrollbar-thin scrollbar-thumb-gradient-to-b scrollbar-thumb-blue-500 scrollbar-track-gray-200">
-              <ul className="space-y-3">
-                {alerts.length === 0 ? (
-                  <p className="text-gray-500 text-center py-6">No alerts yet</p>
-                ) : (
-                  alerts.map((alert) => (
-                    <li
-                      key={alert._id}
-                      className={`p-4 rounded-xl flex flex-col gap-2 font-medium backdrop-blur-sm border-l-4 transition duration-300 ${
-                        new Date(alert.time) < Date.now()
-                          ? "bg-red-100/80 text-red-700 border-red-500 animate-pulse"
-                          : "bg-green-100/80 text-green-700 border-green-500"
-                      }`}
-                    >
-                      <span className="font-bold">👤 {alert.memberName}</span>
-                      <span className="text-sm">💊 {alert.medicine} — {alert.dosage}</span>
-                      <span className="text-xs">
-                        🕒 {new Date(alert.time).toLocaleTimeString([], {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </span>
-                    </li>
-                  ))
-                )}
-              </ul>
+              )}
             </div>
+
+            {/* Mobile analytics button */}
             <button
-              onClick={handleAddDrugAlert}
-              className="mt-4 w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-2.5 rounded-xl hover:shadow-lg transform hover:scale-105 transition duration-300 font-semibold"
+              onClick={() => navigate("/analytics")}
+              className="sm:hidden w-full flex items-center justify-center gap-2 text-sm font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 py-3.5 rounded-2xl transition"
             >
-              + Add Drug Alert
+              <IconChart /> View health analytics
             </button>
           </div>
 
-          {/* Calendar */}
-          <div className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-xl p-6 flex-1 border border-white/30">
-            <h2 className="text-2xl font-bold mb-4 text-gray-800">📅 Calendar</h2>
-            <div className="react-calendar-modern">
-              <Calendar onChange={setDate} value={date} />
+          {/* ── Right sidebar ── */}
+          <div className="flex flex-col gap-5">
+
+            {/* Drug Alerts */}
+            <div className="bg-white rounded-2xl border border-gray-100 p-5 flex flex-col">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-sm font-semibold text-gray-900 uppercase tracking-wide">Drug Alerts</h2>
+                <button
+                  onClick={handleAddDrugAlert}
+                  className="flex items-center gap-1 text-xs font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded-lg transition"
+                >
+                  <IconPlus /> Add
+                </button>
+              </div>
+
+              <div className="flex flex-col gap-2 max-h-56 overflow-y-auto">
+                {alerts.length === 0 ? (
+                  <p className="text-center text-xs text-gray-400 py-8">No reminders yet</p>
+                ) : (
+                  alerts.map((alert) => {
+                    const overdue = new Date(alert.time) < Date.now();
+                    return (
+                      <div
+                        key={alert._id}
+                        className={`flex flex-col gap-0.5 rounded-xl px-3.5 py-3 border-l-4 ${
+                          overdue ? "bg-rose-50 border-rose-400" : "bg-emerald-50 border-emerald-400"
+                        }`}
+                      >
+                        <span className={`text-xs font-semibold ${overdue ? "text-rose-600" : "text-emerald-700"}`}>
+                          {alert.memberName}
+                        </span>
+                        <span className="text-xs text-gray-700">{alert.medicine} · {alert.dosage}</span>
+                        <span className="text-[11px] text-gray-400 flex items-center gap-1 mt-0.5">
+                          <IconClock />
+                          {new Date(alert.time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                          {overdue && <span className="text-rose-400 font-medium">· overdue</span>}
+                        </span>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
             </div>
+
+            {/* Calendar */}
+            <div className="bg-white rounded-2xl border border-gray-100 p-5">
+              <h2 className="text-sm font-semibold text-gray-900 uppercase tracking-wide mb-4">Calendar</h2>
+              <div className="calendar-wrap">
+                <Calendar onChange={setDate} value={date} />
+              </div>
+            </div>
+
+            {/* Emergency — inline button, NOT a FAB */}
+            <Link
+              to="/emergency"
+              className="w-full flex items-center justify-center gap-2 bg-rose-500 hover:bg-rose-600 active:bg-rose-700 text-white text-sm font-semibold py-3.5 rounded-2xl transition"
+            >
+              <IconAlert /> Emergency
+            </Link>
+
+            {/* Aivana chat */}
+            <AivanaChat />
           </div>
+        </main>
 
-          {/* Analytics Button */}
-          <button
-            onClick={() => (window.location.href = "/analytics")}
-            className="w-full bg-gradient-to-r from-purple-600 to-purple-700 text-white py-3 rounded-xl hover:shadow-lg transform hover:scale-105 transition duration-300 font-bold text-lg"
-          >
-            📊 View Health Analytics
-          </button>
+        <Footer />
+      </div>
 
-          {/* Emergency Button */}
-          <Link
-            to="/emergency"
-            className="fixed bottom-6 left-6 bg-gradient-to-r from-red-500 to-red-600 text-white p-4 rounded-full shadow-2xl text-3xl hover:scale-110 transition duration-300 hover:shadow-xl"
-          >
-            🚨
-          </Link>
-          <AivanaChat />
-
-        </aside>
-      </main>
-
-      <Footer />
-      
-    </div>
-
-    {/* Custom Calendar Styling */}
-    <style>{`
-      .react-calendar-modern .react-calendar {
-        background: transparent;
-        border: none;
-        font-family: inherit;
-      }
-
-      .react-calendar-modern .react-calendar__month-view__weekdays {
-        color: #6b7280;
-        font-weight: bold;
-      }
-
-      .react-calendar-modern .react-calendar__tile {
-        border-radius: 8px;
-        padding: 8px;
-        margin: 2px;
-        transition: all 0.3s ease;
-      }
-
-      .react-calendar-modern .react-calendar__tile:hover {
-        background: linear-gradient(135deg, #3b82f6, #a855f7);
-        color: white;
-        transform: scale(1.05);
-      }
-
-      .react-calendar-modern .react-calendar__tile--active {
-        background: linear-gradient(135deg, #3b82f6, #a855f7);
-        color: white;
-        border-radius: 12px;
-      }
-
-      .react-calendar-modern .react-calendar__tile--now {
-        background: linear-gradient(135deg, rgba(59, 130, 246, 0.3), rgba(168, 85, 247, 0.3));
-        border: 2px solid #3b82f6;
-      }
-    `}</style>
+      <style>{`
+        .calendar-wrap .react-calendar {
+          width: 100%; border: none; font-family: inherit;
+          background: transparent; font-size: 13px;
+        }
+        .calendar-wrap .react-calendar__navigation { margin-bottom: 4px; }
+        .calendar-wrap .react-calendar__navigation button {
+          background: none; border-radius: 8px; font-size: 13px;
+          font-weight: 500; color: #374151; min-width: 32px;
+        }
+        .calendar-wrap .react-calendar__navigation button:hover { background: #f3f4f6; }
+        .calendar-wrap .react-calendar__month-view__weekdays {
+          color: #9ca3af; font-size: 11px; font-weight: 500;
+          text-transform: uppercase;
+        }
+        .calendar-wrap .react-calendar__month-view__weekdays abbr { text-decoration: none; }
+        .calendar-wrap .react-calendar__tile {
+          border-radius: 8px; padding: 6px 4px;
+          font-size: 12px; color: #374151; transition: background 0.15s;
+        }
+        .calendar-wrap .react-calendar__tile:hover { background: #eff6ff; color: #2563eb; }
+        .calendar-wrap .react-calendar__tile--active {
+          background: #2563eb !important; color: white !important; border-radius: 8px;
+        }
+        .calendar-wrap .react-calendar__tile--now {
+          background: #eff6ff; color: #2563eb; font-weight: 600;
+        }
+        .calendar-wrap .react-calendar__tile--now.react-calendar__tile--active {
+          background: #2563eb !important; color: white !important;
+        }
+      `}</style>
     </>
   );
 }

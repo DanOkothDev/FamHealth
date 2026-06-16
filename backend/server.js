@@ -7,6 +7,7 @@ import memberRoutes from "./routes/memberRoutes.js";
 import aiRoutes from "./routes/aiRoutes.js";
 import reminderRoutes from "./routes/reminderRoutes.js";
 import aivanaRouter from "./routes/aivana.js";
+import authRoutes from "./routes/authRoutes.js";
 import "./utils/notificationService.js";
 import emergencyRoutes from "./routes/emergencyRoutes.js";
 
@@ -22,6 +23,7 @@ connectDB();
 
 // Routes
 app.use("/api/family", familyRoutes);
+app.use("/api/auth", authRoutes);
 app.use("/api/members", memberRoutes);
 app.use("/api/ai", aiRoutes);
 app.use("/api/reminders", reminderRoutes);

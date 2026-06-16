@@ -6,11 +6,12 @@ const Spinner = ({ show }) => {
 
   return (
     <div className="spinner-overlay">
-      <div className="dot-spinner">
-        {[...Array(8)].map((_, i) => (
-          <div key={i} className="dot"></div>
-        ))}
+      <div className="fam-loader">
+        <span className="fam-letter" style={{ "--i": 0 }}>F</span>
+        <span className="fam-letter" style={{ "--i": 1 }}>A</span>
+        <span className="fam-letter" style={{ "--i": 2 }}>M</span>
       </div>
+      <div className="fam-tagline">Loading your health hub…</div>
     </div>
   );
 };

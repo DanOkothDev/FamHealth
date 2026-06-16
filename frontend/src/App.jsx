@@ -7,6 +7,8 @@ import ProfilePage from "./pages/ProfilePage";
 import { Navigate } from "react-router-dom";
 import AnalyticsPage from "./pages/AnalyticsPage";
 import Emergency from "./pages/Emergency";
+import SettingsPage from "./pages/SettingsPage";
+
 
 function ProtectedRoute({ children }) {
   const token = localStorage.getItem("token");
@@ -30,6 +32,9 @@ export default function App() {
         />
         <Route path="/analytics" element={<AnalyticsPage />} />
         <Route path="/emergency" element={<Emergency />} />
+       
+        <Route path="/settings" element={<SettingsPage />} />
+
         
 
 
