@@ -575,18 +575,41 @@ export default function EmergencyPage() {
   const fetchHospitals = async (lat, lon) => {
     try {
       setLoading(true);
+      const radius = 6000;
       const query = `
-        [out:json][timeout:25];
+        [out:json][timeout:30];
         (
-          node["amenity"="hospital"](around:8000,${lat},${lon});
-          way["amenity"="hospital"](around:8000,${lat},${lon});
-          relation["amenity"="hospital"](around:8000,${lat},${lon});
+          node["amenity"="hospital"](around:${radius},${lat},${lon});
+          way["amenity"="hospital"](around:${radius},${lat},${lon});
+          relation["amenity"="hospital"](around:${radius},${lat},${lon});
         );
-        out center;
+        out center qt;
       `;
-      const url = `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`;
-      const res = await axios.get(url);
-      const elements = res.data.elements || [];
+
+      const servers = [
+        "https://overpass-api.de/api/interpreter",
+        "https://overpass.openstreetmap.fr/api/interpreter",
+        "https://overpass.kumi.systems/api/interpreter",
+      ];
+
+      let elements = [];
+      let lastError = null;
+
+      for (const server of servers) {
+        try {
+          const url = `${server}?data=${encodeURIComponent(query)}`;
+          const res = await axios.get(url, { timeout: 30000 });
+          elements = res.data.elements || [];
+          break;
+        } catch (err) {
+          lastError = err;
+          console.warn(`Overpass fetch failed on ${server}:`, err?.message || err);
+        }
+      }
+
+      if (!elements.length && lastError) {
+        throw lastError;
+      }
 
       const mapped = elements
         .map((el) => ({
@@ -606,7 +629,7 @@ export default function EmergencyPage() {
       setHospitals(mapped);
     } catch (err) {
       console.error("Error fetching hospitals:", err);
-      setError("Failed to fetch nearby hospitals. Please try again.");
+      setError("Failed to fetch nearby hospitals. The map query timed out or the server is busy. Please reload or try again later.");
     } finally {
       setLoading(false);
     }
